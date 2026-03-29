@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="12dp"
+    android:background="@drawable/widget_background">
+
+    <!-- Steps icon -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="👟"
+        android:textSize="18sp"
+        android:layout_marginEnd="10dp" />
+
+    <!-- Steps count -->
+    <TextView
+        android:id="@+id/widget_steps"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0"
+        android:textColor="#4ADE80"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:layout_marginEnd="6dp" />
+
+    <!-- Label -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="steps"
+        android:textColor="#555555"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:layout_marginEnd="12dp" />
+
+    <!-- Progress bar container -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center_vertical">
+
+        <!-- Progress bar track -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:background="#2A2A2A"
+            android:layout_marginBottom="4dp">
+
+            <!-- Progress bar fill -->
+            <View
+                android:id="@+id/widget_progress_fill"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:background="#4ADE80" />
+
+        </FrameLayout>
+
+        <!-- Goal label -->
+        <TextView
+            android:id="@+id/widget_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 / 10000"
+            android:textColor="#555555"
+            android:textSize="9sp"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.05" />
+
+    </LinearLayout>
+
+</LinearLayout>
