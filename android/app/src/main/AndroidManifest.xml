@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:label="StepWidget"
+        android:label="Step Counter"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
