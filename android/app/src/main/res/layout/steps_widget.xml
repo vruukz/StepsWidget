@@ -45,21 +45,17 @@
         android:orientation="vertical"
         android:gravity="center_vertical">
 
-        <!-- Progress bar track -->
-        <FrameLayout
+        <!-- Progress bar -->
+        <ProgressBar
+            android:id="@+id/widget_progress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="match_parent"
             android:layout_height="6dp"
-            android:background="#2A2A2A"
-            android:layout_marginBottom="4dp">
-
-            <!-- Progress bar fill -->
-            <View
-                android:id="@+id/widget_progress_fill"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:background="#4ADE80" />
-
-        </FrameLayout>
+            android:max="100"
+            android:progress="0"
+            android:progressTint="#4ADE80"
+            android:progressBackgroundTint="#2A2A2A"
+            android:layout_marginBottom="4dp" />
 
         <!-- Goal label -->
         <TextView

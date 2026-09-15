@@ -38,6 +38,9 @@ class StepsWidget : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_steps, steps.toString())
             views.setTextViewText(R.id.widget_label, label)
 
+            val progressPercent = ((steps.toFloat() / goal.toFloat()) * 100).toInt().coerceIn(0, 100)
+            views.setProgressBar(R.id.widget_progress, 100, progressPercent, false)
+
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }
     }
