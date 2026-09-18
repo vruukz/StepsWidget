@@ -2,14 +2,13 @@ package com.example.steps_widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.res.ColorStateList
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.widget.RemoteViews
@@ -17,12 +16,10 @@ import java.util.Calendar
 
 class StepsWidget : AppWidgetProvider() {
 
-    // The Flutter app only writes flutter.steps/label while it's running in
-    // the foreground, so the widget used to sit frozen at whatever value was
-    // last written until the app was reopened. The system still calls
-    // onUpdate() periodically (updatePeriodMillis) and on boot regardless of
-    // whether the app is running, so read the raw step-counter sensor here
-    // too and recompute today's steps independently.
+    // Fallback path: the periodic call the system makes to onUpdate()
+    // regardless of whether the app or StepsForegroundService is running.
+    // The service (started on launch/boot) is what keeps the widget live
+    // while walking; this just re-syncs it every updatePeriodMillis tick.
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -80,6 +77,18 @@ class StepsWidget : AppWidgetProvider() {
             handler.postDelayed({ finish() }, SENSOR_TIMEOUT_MS)
         }
 
+        // Used by StepsForegroundService, which keeps its own persistent
+        // sensor listener and already has a fresh reading on every call —
+        // no need to register/wait for one here.
+        fun applySensorValueAndUpdateWidgets(context: Context, sensorSteps: Long) {
+            applySensorValue(context, sensorSteps)
+            val manager = AppWidgetManager.getInstance(context)
+            val ids = manager.getAppWidgetIds(ComponentName(context, StepsWidget::class.java))
+            for (id in ids) {
+                updateWidget(context, manager, id)
+            }
+        }
+
         private fun applySensorValue(context: Context, sensorSteps: Long) {
             val prefs: SharedPreferences = context.getSharedPreferences(
                 PREFS_NAME, Context.MODE_PRIVATE
@@ -114,6 +123,18 @@ class StepsWidget : AppWidgetProvider() {
                 .apply()
         }
 
+        // "10000" -> "10k", "7500" -> "7.5k", "500" -> "500"
+        fun formatGoalSuffix(goal: Long): String {
+            if (goal < 1000) return "/$goal"
+            val thousands = goal / 1000.0
+            val text = if (thousands == thousands.toLong().toDouble()) {
+                "${thousands.toLong()}k"
+            } else {
+                "${"%.1f".format(thousands)}k"
+            }
+            return "/$text"
+        }
+
         fun updateWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -123,23 +144,14 @@ class StepsWidget : AppWidgetProvider() {
                 PREFS_NAME, Context.MODE_PRIVATE
             )
 
-            val steps = prefs.getLong("flutter.steps", 0L).toInt()
-            val goal = prefs.getLong("flutter.goal", 10000L).toInt()
-            val label = prefs.getString("flutter.label", "$steps / $goal") ?: "$steps / $goal"
+            val steps = prefs.getLong("flutter.steps", 0L)
+            val goal = prefs.getLong("flutter.goal", 10000L)
             val accent = prefs.getLong("flutter.accent_color", DEFAULT_ACCENT.toLong()).toInt()
 
             val views = RemoteViews(context.packageName, R.layout.steps_widget)
             views.setTextViewText(R.id.widget_steps, steps.toString())
-            views.setTextViewText(R.id.widget_label, label)
+            views.setTextViewText(R.id.widget_goal_suffix, formatGoalSuffix(goal))
             views.setTextColor(R.id.widget_steps, accent)
-
-            val progressPercent = ((steps.toFloat() / goal.toFloat()) * 100).toInt().coerceIn(0, 100)
-            views.setProgressBar(R.id.widget_progress, 100, progressPercent, false)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                views.setColorStateList(
-                    R.id.widget_progress, "setProgressTintList", ColorStateList.valueOf(accent)
-                )
-            }
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }

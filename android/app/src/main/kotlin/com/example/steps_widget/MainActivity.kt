@@ -2,12 +2,21 @@ package com.example.steps_widget
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.example.steps_widget/widget"
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.startForegroundService(
+            this, Intent(this, StepsForegroundService::class.java)
+        )
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

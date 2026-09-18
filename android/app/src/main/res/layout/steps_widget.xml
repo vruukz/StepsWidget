@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
-    android:gravity="center_vertical"
-    android:padding="12dp"
+    android:gravity="center"
+    android:padding="8dp"
     android:background="@drawable/widget_background">
 
     <!-- Steps icon -->
@@ -12,8 +12,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="👟"
-        android:textSize="18sp"
-        android:layout_marginEnd="10dp" />
+        android:textSize="15sp"
+        android:layout_marginEnd="5dp" />
 
     <!-- Steps count -->
     <TextView
@@ -22,52 +22,22 @@
         android:layout_height="wrap_content"
         android:text="0"
         android:textColor="#4ADE80"
-        android:textSize="22sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         android:fontFamily="monospace"
-        android:layout_marginEnd="6dp" />
+        android:maxLines="1"
+        android:singleLine="true" />
 
-    <!-- Label -->
+    <!-- Goal, abbreviated e.g. "/10k" -->
     <TextView
+        android:id="@+id/widget_goal_suffix"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="steps"
+        android:text="/10k"
         android:textColor="#555555"
-        android:textSize="11sp"
+        android:textSize="12sp"
         android:fontFamily="monospace"
-        android:layout_marginEnd="12dp" />
-
-    <!-- Progress bar container -->
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:gravity="center_vertical">
-
-        <!-- Progress bar -->
-        <ProgressBar
-            android:id="@+id/widget_progress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="6dp"
-            android:max="100"
-            android:progress="0"
-            android:progressTint="#4ADE80"
-            android:progressBackgroundTint="#2A2A2A"
-            android:layout_marginBottom="4dp" />
-
-        <!-- Goal label -->
-        <TextView
-            android:id="@+id/widget_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="0 / 10000"
-            android:textColor="#555555"
-            android:textSize="9sp"
-            android:fontFamily="monospace"
-            android:letterSpacing="0.05" />
-
-    </LinearLayout>
+        android:maxLines="1"
+        android:singleLine="true" />
 
 </LinearLayout>

@@ -109,6 +109,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _requestPermission() async {
     await Permission.activityRecognition.request();
+    // Needed on Android 13+ for the "tracking your steps" foreground
+    // service notification to actually show up.
+    await Permission.notification.request();
   }
 
   Future<void> _loadBaseline() async {
