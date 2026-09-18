@@ -123,17 +123,7 @@ class StepsWidget : AppWidgetProvider() {
                 .apply()
         }
 
-        // "10000" -> "10k", "7500" -> "7.5k", "500" -> "500"
-        fun formatGoalSuffix(goal: Long): String {
-            if (goal < 1000) return "/$goal"
-            val thousands = goal / 1000.0
-            val text = if (thousands == thousands.toLong().toDouble()) {
-                "${thousands.toLong()}k"
-            } else {
-                "${"%.1f".format(thousands)}k"
-            }
-            return "/$text"
-        }
+        fun formatGoalSuffix(goal: Long): String = "/$goal"
 
         fun updateWidget(
             context: Context,

@@ -1,15 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'history_screen.dart';
 
 const appGroupId = 'com.example.steps_widget';
 const widgetName = 'StepsWidget';
-const goalSteps = 10000;
+const defaultGoal = 10000;
 const defaultAccent = Color(0xFF4ADE80);
+
+// Rough estimates (no user height/weight input) — average adult stride and
+// energy cost per step. Good enough for a ballpark, not a fitness tracker.
+const strideMeters = 0.78;
+const kcalPerStep = 0.04;
+
+double stepsToKm(int steps) => steps * strideMeters / 1000;
+double stepsToKcal(int steps) => steps * kcalPerStep;
 
 Future<void> backgroundCallback(Uri? uri) async {
   // Called when widget is tapped — open app
@@ -89,9 +99,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+const _historyKey = 'steps_history';
+
 class _HomeScreenState extends State<HomeScreen> {
   int _steps = 0;
+  int _goal = defaultGoal;
   int _baseSteps = 0; // steps at midnight (reset baseline)
+  Map<String, int> _history = {};
   StreamSubscription<StepCount>? _subscription;
   String _status = 'Initializing...';
 
@@ -103,8 +117,83 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _init() async {
     await _requestPermission();
+    await _loadGoal();
+    await _loadHistory();
     await _loadBaseline();
+    // Pick up whatever the native background service tracked while the
+    // app wasn't open, instead of sitting at 0 until the next step event.
+    final prefs = await SharedPreferences.getInstance();
+    final savedSteps = prefs.getInt('steps') ?? 0;
+    if (savedSteps > 0) {
+      setState(() => _steps = savedSteps);
+      await _recordHistory(savedSteps);
+    }
     _startPedometer();
+  }
+
+  Future<void> _loadHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_historyKey);
+    if (raw == null) return;
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    setState(() {
+      _history = decoded.map((k, v) => MapEntry(k, v as int));
+    });
+  }
+
+  Future<void> _recordHistory(int steps) async {
+    final today = _todayString();
+    if (_history[today] == steps) return;
+    setState(() => _history = {..._history, today: steps});
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_historyKey, jsonEncode(_history));
+  }
+
+  Future<void> _loadGoal() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() => _goal = prefs.getInt('goal') ?? defaultGoal);
+  }
+
+  Future<void> _setGoal(int newGoal) async {
+    setState(() => _goal = newGoal);
+    await _updateWidget(_steps);
+  }
+
+  void _openGoalEditor() {
+    final controller = TextEditingController(text: _goal.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111111),
+        title: const Text('Daily goal', style: TextStyle(color: Color(0xFFF0F0F0))),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Color(0xFFF0F0F0)),
+          decoration: const InputDecoration(
+            hintText: 'Steps',
+            hintStyle: TextStyle(color: Color(0xFF555555)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = int.tryParse(controller.text.trim());
+              if (value != null && value > 0) {
+                _setGoal(value);
+              }
+              Navigator.of(context).pop();
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _requestPermission() async {
@@ -150,6 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
         });
 
         await _updateWidget(todaySteps);
+        await _recordHistory(todaySteps);
       },
       onError: (e) {
         setState(() => _status = 'Sensor unavailable');
@@ -160,9 +250,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _updateWidget(int steps) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('steps', steps);
-    await prefs.setInt('goal', goalSteps);
+    await prefs.setInt('goal', _goal);
     await prefs.setString('label',
-        steps >= goalSteps ? 'GOAL REACHED ✓' : '$steps / $goalSteps');
+        steps >= _goal ? 'GOAL REACHED ✓' : '$steps / $_goal');
 
     // Trigger widget update via broadcast
     const platform = MethodChannel('com.example.steps_widget/widget');
@@ -214,8 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final accent = widget.accent;
-    final progress = (_steps / goalSteps).clamp(0.0, 1.0);
+    final progress = (_steps / _goal).clamp(0.0, 1.0);
     final pct = (progress * 100).toStringAsFixed(0);
+    final km = stepsToKm(_steps);
+    final kcal = stepsToKcal(_steps);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
@@ -250,13 +342,23 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontSize: 18)),
                   ),
                   IconButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HistoryScreen(accent: accent),
+                      ),
+                    ),
+                    icon: const Icon(Icons.bar_chart_rounded, color: Color(0xFF555555)),
+                    tooltip: 'History',
+                  ),
+                  IconButton(
                     onPressed: _openAccentPicker,
                     icon: const Icon(Icons.palette_outlined, color: Color(0xFF555555)),
                     tooltip: 'Accent color',
                   ),
                 ],
               ),
-              const SizedBox(height: 60),
+              const SizedBox(height: 48),
 
               // Step count
               Text(
@@ -277,24 +379,51 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+
+              // Distance / calories
+              Row(
+                children: [
+                  Text('${km.toStringAsFixed(2)} km',
+                      style: const TextStyle(
+                          color: Color(0xFF888888),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 16),
+                  Text('${kcal.toStringAsFixed(0)} kcal',
+                      style: const TextStyle(
+                          color: Color(0xFF888888),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+              const SizedBox(height: 32),
 
               // Progress bar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('GOAL',
-                      style: TextStyle(
-                          color: Color(0xFF555555),
-                          fontSize: 10,
-                          letterSpacing: 2)),
-                  Text('$pct%',
-                      style: TextStyle(
-                          color: accent,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1)),
-                ],
+              GestureDetector(
+                onTap: _openGoalEditor,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('GOAL',
+                            style: TextStyle(
+                                color: Color(0xFF555555),
+                                fontSize: 10,
+                                letterSpacing: 2)),
+                        const SizedBox(width: 6),
+                        Icon(Icons.edit_outlined, color: const Color(0xFF444444), size: 11),
+                      ],
+                    ),
+                    Text('$pct%',
+                        style: TextStyle(
+                            color: accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1)),
+                  ],
+                ),
               ),
               const SizedBox(height: 8),
               ClipRRect(
@@ -308,7 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                '$_steps / $goalSteps steps',
+                '$_steps / $_goal steps',
                 style: const TextStyle(color: Color(0xFF555555), fontSize: 11),
               ),
 
